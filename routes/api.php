@@ -12,6 +12,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/staff/{email}', [StaffController::class, 'show']);
         Route::get('/staff/{email}/courses', [StaffController::class, 'courses']);
         Route::get('/staff/{email}/summary', [StaffController::class, 'summary']);
+        Route::get('/staff/{email}/transcript', [StaffController::class, 'transcript']);
+        Route::get('/staff/{email}/badges', [StaffController::class, 'badges']);
+        Route::get('/staff/{email}/competencies', [StaffController::class, 'competencies']);
         Route::get('/staff/{email}/courses/{courseId}/progress', [StaffController::class, 'courseProgress'])->whereNumber('courseId');
         Route::get('/staff/{email}/courses/{courseId}/grades', [StaffController::class, 'courseGrades'])->whereNumber('courseId');
         Route::get('/staff/{email}/courses/{courseId}/completion', [StaffController::class, 'courseCompletion'])->whereNumber('courseId');

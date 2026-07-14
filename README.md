@@ -67,6 +67,9 @@ php artisan test
    - `core_completion_get_course_completion_status`
    - `core_completion_get_activities_completion_status`
    - `gradereport_user_get_grade_items`
+   - `gradereport_overview_get_course_grades`
+   - `core_badges_get_user_badges`
+   - `core_competency_list_user_plans`
 5. **Site administration → Server → Web services → Manage tokens** → generate a token for the service account, scoped to the custom service above.
 6. Put the site URL and token in `.env` as `MOODLE_BASE_URL` and `MOODLE_TOKEN`.
 
@@ -91,6 +94,9 @@ Any `GET` endpoint that returns an object or list supports a `?fields=a,b,c` que
 | GET | `/staff/{email}` | Staff profile (Moodle user id, name, email, department). |
 | GET | `/staff/{email}/courses` | All courses the staff member is enrolled in. |
 | GET | `/staff/{email}/summary` | One-call dashboard summary: course counts, completion, average score. |
+| GET | `/staff/{email}/transcript` | Full learning history: every course with progress, completion, and final grade. |
+| GET | `/staff/{email}/badges` | Awarded badges with issue/expiry dates and verification hash. |
+| GET | `/staff/{email}/competencies` | Learning plans with status and due date (requires competencies enabled in Moodle). |
 | GET | `/courses/{courseId}` | Course details. |
 | GET | `/staff/{email}/courses/{courseId}/progress` | Activity-completion progress percentage. |
 | GET | `/staff/{email}/courses/{courseId}/grades` | Grade items and final grade/status for the course. |
@@ -116,7 +122,7 @@ Moodle responses are cached per query (`MOODLE_CACHE_TTL`, default 900s) via Lar
 
 ## Roadmap (not yet built)
 
-- **Phase 2** — transcripts, certificates, badges, competencies, learning timeline.
+- **Phase 2 (remaining)** — certificates. There is no core Moodle web service for certificates — the function names depend on which plugin the site uses (`mod_customcert`, `mod_certificate`, or `tool_certificate`). Pending confirmation of the plugin installed on the live site. Transcript, badges, and competencies are done.
 - **Phase 3** — manager/HR reporting: department learning, course participants, completion/compliance/top-performer reports.
 - **Phase 4** — administrative + inbound sync: provisioning users, enrolments, and scheduled syncs.
   - This includes **inbound, rule-driven enrolment**: other systems (HR) push staff data (join date, etc.) to this API, which evaluates business rules — e.g. a "NEO exam" window opening 4 months after join date — and calls Moodle to enrol the staff member into the right course with a computed start/end date. This will likely integrate with the custom **learnguard** / **learntrack** Moodle plugins. Not yet scoped — needs the plugins' web service/API surface confirmed before implementation.

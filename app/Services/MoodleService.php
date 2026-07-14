@@ -94,6 +94,39 @@ class MoodleService
         });
     }
 
+    /**
+     * Final grade for every course the user is enrolled in, in one call
+     * (gradereport_overview), keyed as returned by Moodle.
+     */
+    public function getOverviewGrades(int $userId): array
+    {
+        return $this->remember("overview_grades:{$userId}", function () use ($userId) {
+            $response = $this->call('gradereport_overview_get_course_grades', [
+                'userid' => $userId,
+            ]);
+
+            return $response['grades'] ?? [];
+        });
+    }
+
+    public function getUserBadges(int $userId): array
+    {
+        return $this->remember("badges:{$userId}", function () use ($userId) {
+            $response = $this->call('core_badges_get_user_badges', [
+                'userid' => $userId,
+            ]);
+
+            return $response['badges'] ?? [];
+        });
+    }
+
+    public function getUserLearningPlans(int $userId): array
+    {
+        return $this->remember("plans:{$userId}", fn () => $this->call('core_competency_list_user_plans', [
+            'userid' => $userId,
+        ]));
+    }
+
     private function remember(string $key, \Closure $resolver): mixed
     {
         return Cache::remember("moodle:{$key}", $this->cacheTtl, $resolver);

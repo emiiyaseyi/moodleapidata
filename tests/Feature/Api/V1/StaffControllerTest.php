@@ -31,7 +31,41 @@ class StaffControllerTest extends TestCase
                     ],
                 ]),
                 'core_enrol_get_users_courses' => Http::response([
-                    ['id' => 22, 'shortname' => 'CX', 'fullname' => 'Customer Experience'],
+                    [
+                        'id' => 22,
+                        'shortname' => 'CX',
+                        'fullname' => 'Customer Experience',
+                        'progress' => 82.5,
+                        'completed' => true,
+                        'startdate' => 1750000000,
+                        'enddate' => 0,
+                        'lastaccess' => 1751400000,
+                    ],
+                ]),
+                'gradereport_overview_get_course_grades' => Http::response([
+                    'grades' => [
+                        ['courseid' => 22, 'grade' => '87.00', 'rawgrade' => '87'],
+                    ],
+                ]),
+                'core_badges_get_user_badges' => Http::response([
+                    'badges' => [
+                        [
+                            'name' => 'AML Champion',
+                            'description' => 'Completed AML training with distinction',
+                            'dateissued' => 1751000000,
+                            'dateexpire' => 0,
+                            'badgeurl' => 'https://moodle.example/badge/1',
+                            'uniquehash' => 'abc123hash',
+                        ],
+                    ],
+                ]),
+                'core_competency_list_user_plans' => Http::response([
+                    [
+                        'id' => 7,
+                        'name' => 'Compliance Fundamentals',
+                        'status' => 1,
+                        'duedate' => 1760000000,
+                    ],
                 ]),
                 'core_completion_get_course_completion_status' => Http::response([
                     'completionstatus' => [
@@ -181,6 +215,63 @@ class StaffControllerTest extends TestCase
                     'completed' => 1,
                     'in_progress' => 0,
                     'average_score' => 87.0,
+                ],
+            ]);
+    }
+
+    public function test_transcript_joins_courses_with_overview_grades(): void
+    {
+        Sanctum::actingAs(ApiConsumer::factory()->create());
+        $this->fakeMoodle();
+
+        $this->getJson('/api/v1/staff/michael@email.com/transcript')
+            ->assertOk()
+            ->assertJson([
+                'data' => [
+                    [
+                        'course_id' => 22,
+                        'full_name' => 'Customer Experience',
+                        'progress' => 83,
+                        'completed' => true,
+                        'grade' => '87.00',
+                        'end_date' => null,
+                    ],
+                ],
+            ]);
+    }
+
+    public function test_badges_returns_issued_badges(): void
+    {
+        Sanctum::actingAs(ApiConsumer::factory()->create());
+        $this->fakeMoodle();
+
+        $this->getJson('/api/v1/staff/michael@email.com/badges')
+            ->assertOk()
+            ->assertJson([
+                'data' => [
+                    [
+                        'name' => 'AML Champion',
+                        'expires_on' => null,
+                        'verification_hash' => 'abc123hash',
+                    ],
+                ],
+            ]);
+    }
+
+    public function test_competencies_returns_learning_plans_with_readable_status(): void
+    {
+        Sanctum::actingAs(ApiConsumer::factory()->create());
+        $this->fakeMoodle();
+
+        $this->getJson('/api/v1/staff/michael@email.com/competencies')
+            ->assertOk()
+            ->assertJson([
+                'data' => [
+                    [
+                        'id' => 7,
+                        'name' => 'Compliance Fundamentals',
+                        'status' => 'Active',
+                    ],
                 ],
             ]);
     }

@@ -107,6 +107,69 @@ class StaffController extends Controller
         ]), 'Staff summary retrieved successfully.');
     }
 
+    public function transcript(Request $request, string $email): JsonResponse
+    {
+        $user = $this->resolveUser($email);
+        $courses = $this->moodle->getUserCourses($user['id']);
+        $grades = collect($this->moodle->getOverviewGrades($user['id']))->keyBy('courseid');
+
+        $transcript = collect($courses)->map(function ($course) use ($grades) {
+            $grade = $grades->get($course['id'], []);
+
+            return [
+                'course_id' => $course['id'],
+                'short_name' => $course['shortname'] ?? null,
+                'full_name' => $course['fullname'] ?? null,
+                'progress' => isset($course['progress']) ? (int) round($course['progress']) : null,
+                'completed' => (bool) ($course['completed'] ?? false),
+                'grade' => $grade['grade'] ?? null,
+                'grade_raw' => $grade['rawgrade'] ?? null,
+                'start_date' => isset($course['startdate']) && $course['startdate'] ? date('Y-m-d', $course['startdate']) : null,
+                'end_date' => isset($course['enddate']) && $course['enddate'] ? date('Y-m-d', $course['enddate']) : null,
+                'last_access' => isset($course['lastaccess']) && $course['lastaccess'] ? date('Y-m-d', $course['lastaccess']) : null,
+            ];
+        })->values()->all();
+
+        return $this->respondSuccess(FieldFilter::apply($request, $transcript), 'Staff transcript retrieved successfully.');
+    }
+
+    public function badges(Request $request, string $email): JsonResponse
+    {
+        $user = $this->resolveUser($email);
+
+        $badges = collect($this->moodle->getUserBadges($user['id']))->map(fn ($badge) => [
+            'name' => $badge['name'] ?? null,
+            'description' => $badge['description'] ?? null,
+            'issued_on' => isset($badge['dateissued']) && $badge['dateissued'] ? date('Y-m-d', $badge['dateissued']) : null,
+            'expires_on' => isset($badge['dateexpire']) && $badge['dateexpire'] ? date('Y-m-d', $badge['dateexpire']) : null,
+            'badge_url' => $badge['badgeurl'] ?? null,
+            'verification_hash' => $badge['uniquehash'] ?? null,
+        ])->values()->all();
+
+        return $this->respondSuccess(FieldFilter::apply($request, $badges), 'Staff badges retrieved successfully.');
+    }
+
+    public function competencies(Request $request, string $email): JsonResponse
+    {
+        $user = $this->resolveUser($email);
+
+        $plans = collect($this->moodle->getUserLearningPlans($user['id']))->map(fn ($plan) => [
+            'id' => $plan['id'] ?? null,
+            'name' => $plan['name'] ?? null,
+            'status' => match ($plan['status'] ?? null) {
+                0 => 'Draft',
+                1 => 'Active',
+                2 => 'Complete',
+                3 => 'Waiting for review',
+                4 => 'In review',
+                default => null,
+            },
+            'due_date' => isset($plan['duedate']) && $plan['duedate'] ? date('Y-m-d', $plan['duedate']) : null,
+        ])->values()->all();
+
+        return $this->respondSuccess(FieldFilter::apply($request, $plans), 'Staff learning plans retrieved successfully.');
+    }
+
     private function resolveUser(string $email): array
     {
         $user = $this->moodle->findUserByEmail($email);
