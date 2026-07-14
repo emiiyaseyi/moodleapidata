@@ -54,6 +54,7 @@ return Application::configure(basePath: dirname(__DIR__))
                     'timestamp' => now()->toIso8601String(),
                     'version' => 'v1',
                     'error_code' => $e instanceof MoodleApiException ? $e->moodleErrorCode : null,
+                    'errors' => $e instanceof ValidationException ? $e->errors() : null,
                 ],
             ], $status);
         });

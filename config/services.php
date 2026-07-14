@@ -39,6 +39,12 @@ return [
         'base_url' => env('MOODLE_BASE_URL'),
         'token' => env('MOODLE_TOKEN'),
         'cache_ttl' => env('MOODLE_CACHE_TTL', 900),
+        // Moodle role id used when enrolling (5 = student on a default install).
+        'enrol_role_id' => env('MOODLE_ENROL_ROLE_ID', 5),
+        // NEO auto-enrolment: course new staff are enrolled into on onboarding.
+        // Leave unset to disable the rule (staff records are still stored).
+        'neo_course_id' => env('MOODLE_NEO_COURSE_ID'),
+        'neo_offset_months' => env('MOODLE_NEO_OFFSET_MONTHS', 4),
     ],
 
 ];

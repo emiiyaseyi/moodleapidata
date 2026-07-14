@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api\V1;
 use App\Exceptions\MoodleApiException;
 use App\Http\Controllers\Concerns\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Models\StaffMember;
 use App\Services\MoodleService;
 use App\Support\FieldFilter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class StaffController extends Controller
@@ -105,6 +107,72 @@ class StaffController extends Controller
                 ? date('Y-m-d', $user['lastaccess'])
                 : null,
         ]), 'Staff summary retrieved successfully.');
+    }
+
+    /**
+     * Onboard a staff member pushed from HR. Computes the NEO exam date
+     * (join date + configured offset) and, when a NEO course is configured,
+     * enrols them with an enrolment window of join date -> exam date.
+     * The Moodle account must already exist.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email' => ['required', 'email'],
+            'fullname' => ['nullable', 'string', 'max:255'],
+            'department' => ['nullable', 'string', 'max:255'],
+            'join_date' => ['required', 'date'],
+        ]);
+
+        $user = $this->moodle->findUserByEmail($data['email']);
+
+        if (! $user) {
+            throw new NotFoundHttpException("No Moodle user found for email \"{$data['email']}\". The account must exist before onboarding.");
+        }
+
+        $joinDate = Carbon::parse($data['join_date'])->startOfDay();
+        $examDate = $joinDate->copy()->addMonths((int) config('services.moodle.neo_offset_months', 4));
+
+        $staff = StaffMember::updateOrCreate(
+            ['email' => $data['email']],
+            [
+                'moodle_user_id' => $user['id'],
+                'fullname' => $data['fullname'] ?? $user['fullname'] ?? null,
+                'department' => $data['department'] ?? $user['department'] ?? null,
+                'join_date' => $joinDate->toDateString(),
+                'neo_exam_date' => $examDate->toDateString(),
+            ],
+        );
+
+        $neoEnrolment = null;
+
+        if ($neoCourseId = config('services.moodle.neo_course_id')) {
+            $this->moodle->enrolUser(
+                userId: $user['id'],
+                courseId: (int) $neoCourseId,
+                roleId: (int) config('services.moodle.enrol_role_id', 5),
+                timeStart: $joinDate->getTimestamp(),
+                timeEnd: $examDate->copy()->endOfDay()->getTimestamp(),
+            );
+
+            $staff->forceFill(['neo_enrolled_at' => now()])->save();
+
+            $neoEnrolment = [
+                'course_id' => (int) $neoCourseId,
+                'starts_on' => $joinDate->toDateString(),
+                'ends_on' => $examDate->toDateString(),
+            ];
+        }
+
+        return $this->respondSuccess([
+            'moodle_user_id' => $user['id'],
+            'email' => $staff->email,
+            'fullname' => $staff->fullname,
+            'department' => $staff->department,
+            'join_date' => $staff->join_date->toDateString(),
+            'neo_exam_date' => $staff->neo_exam_date?->toDateString(),
+            'neo_enrolment' => $neoEnrolment,
+        ], 'Staff member onboarded successfully.', 201);
     }
 
     public function transcript(Request $request, string $email): JsonResponse

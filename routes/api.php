@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\V1\CourseController;
+use App\Http\Controllers\Api\V1\EnrolmentController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\StaffController;
 use Illuminate\Support\Facades\Route;
@@ -9,6 +10,9 @@ Route::prefix('v1')->group(function () {
     Route::get('/health', HealthController::class);
 
     Route::middleware(['auth:sanctum', 'throttle:api', 'log.api'])->group(function () {
+        Route::post('/staff', [StaffController::class, 'store']);
+        Route::post('/enrolments', [EnrolmentController::class, 'store']);
+
         Route::get('/staff/{email}', [StaffController::class, 'show']);
         Route::get('/staff/{email}/courses', [StaffController::class, 'courses']);
         Route::get('/staff/{email}/summary', [StaffController::class, 'summary']);

@@ -71,6 +71,7 @@ php artisan test
    - `core_badges_get_user_badges`
    - `core_competency_list_user_plans`
    - `core_enrol_get_enrolled_users`
+   - `enrol_manual_enrol_users` (write — needed for `POST /enrolments` and NEO auto-enrolment; requires the manual enrolment plugin enabled in the target courses and `enrol/manual:enrol` capability)
 
    For the course reporting endpoints (participants/statistics/completion-report), the service account also needs to see other users' grades — i.e. hold `moodle/grade:viewall` in the relevant courses (a non-editing teacher role, or a custom role, works).
 5. **Site administration → Server → Web services → Manage tokens** → generate a token for the service account, scoped to the custom service above.
@@ -104,6 +105,8 @@ Any `GET` endpoint that returns an object or list supports a `?fields=a,b,c` que
 | GET | `/courses/{courseId}/participants` | Enrolled users with department, roles, and last access. |
 | GET | `/courses/{courseId}/statistics` | Aggregates: enrolled/graded counts, average/highest/lowest final grade, pass rate. |
 | GET | `/courses/{courseId}/completion-report` | Per-participant compliance report: final grade and Passed/Failed/Not graded status. |
+| POST | `/staff` | Onboard a staff member from HR (`email`, `join_date`, optional `fullname`/`department`). Computes the NEO exam date (join + `MOODLE_NEO_OFFSET_MONTHS`) and, if `MOODLE_NEO_COURSE_ID` is set, enrols them with a join-date → exam-date window. |
+| POST | `/enrolments` | Enrol an existing Moodle user into any course: `email`, `course_id`, optional `start_date` (default today), and either `end_date` or `duration_days` (e.g. 14 for a two-week window); omit both for open-ended. |
 | GET | `/staff/{email}/courses/{courseId}/progress` | Activity-completion progress percentage. |
 | GET | `/staff/{email}/courses/{courseId}/grades` | Grade items and final grade/status for the course. |
 | GET | `/staff/{email}/courses/{courseId}/completion` | Course completion status and date. |
@@ -130,8 +133,7 @@ Moodle responses are cached per query (`MOODLE_CACHE_TTL`, default 900s) via Lar
 
 - **Phase 2 (remaining)** — certificates. There is no core Moodle web service for certificates — the function names depend on which plugin the site uses (`mod_customcert`, `mod_certificate`, or `tool_certificate`). Pending confirmation of the plugin installed on the live site. Transcript, badges, and competencies are done.
 - **Phase 3 (remaining)** — department-wide reports (e.g. `/departments/{department}/learning`). Moodle's web services cannot search users by department, so this needs either a local user sync (Phase 4) or aggregation across known courses. Course-level reporting (participants, statistics, completion-report) is done.
-- **Phase 4** — administrative + inbound sync: provisioning users, enrolments, and scheduled syncs.
-  - This includes **inbound, rule-driven enrolment**: other systems (HR) push staff data (join date, etc.) to this API, which evaluates business rules — e.g. a "NEO exam" window opening 4 months after join date — and calls Moodle to enrol the staff member into the right course with a computed start/end date. This will likely integrate with the custom **learnguard** / **learntrack** Moodle plugins. Not yet scoped — needs the plugins' web service/API surface confirmed before implementation.
+- **Phase 4 (remaining)** — scheduled syncs (nightly user/grade sync jobs via Laravel scheduler + queues), Moodle account provisioning (`core_user_create_users` — deliberately not built: accounts are created upstream), and integration with the custom **learnguard** / **learntrack** Moodle plugins (needs their web service surface confirmed). The core inbound flow is done: `POST /staff` applies the NEO rule (exam date = join date + configured offset; enrolment window join → exam), and `POST /enrolments` handles ad-hoc enrolments with duration windows. Staff pushed via `POST /staff` are stored in the local `staff_members` table — this is also the foundation for the department-wide reports deferred from Phase 3.
 
 ### Architecture decision: this API stays standalone
 

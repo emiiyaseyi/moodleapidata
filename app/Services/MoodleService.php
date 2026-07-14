@@ -149,6 +149,30 @@ class MoodleService
         ]));
     }
 
+    /**
+     * Manually enrol a user into a course (enrol_manual_enrol_users).
+     * timeStart/timeEnd are unix timestamps; 0 means no limit. Re-enrolling
+     * an already-enrolled user simply updates their enrolment window.
+     */
+    public function enrolUser(int $userId, int $courseId, int $roleId, int $timeStart = 0, int $timeEnd = 0): void
+    {
+        $this->call('enrol_manual_enrol_users', [
+            'enrolments' => [[
+                'roleid' => $roleId,
+                'userid' => $userId,
+                'courseid' => $courseId,
+                'timestart' => $timeStart,
+                'timeend' => $timeEnd,
+            ]],
+        ]);
+
+        // The enrolment changes what several cached reads would return.
+        Cache::forget("moodle:user:{$userId}:courses");
+        Cache::forget("moodle:overview_grades:{$userId}");
+        Cache::forget("moodle:course:{$courseId}:participants");
+        Cache::forget("moodle:grades:{$courseId}:all");
+    }
+
     private function remember(string $key, \Closure $resolver): mixed
     {
         return Cache::remember("moodle:{$key}", $this->cacheTtl, $resolver);
