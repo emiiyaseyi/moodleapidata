@@ -120,6 +120,28 @@ class MoodleService
         });
     }
 
+    public function getEnrolledUsers(int $courseId): array
+    {
+        return $this->remember("course:{$courseId}:participants", fn () => $this->call('core_enrol_get_enrolled_users', [
+            'courseid' => $courseId,
+        ]));
+    }
+
+    /**
+     * Grade report for every user in the course (userid omitted = all users;
+     * requires the service account to hold moodle/grade:viewall in the course).
+     */
+    public function getAllCourseGrades(int $courseId): array
+    {
+        return $this->remember("grades:{$courseId}:all", function () use ($courseId) {
+            $response = $this->call('gradereport_user_get_grade_items', [
+                'courseid' => $courseId,
+            ]);
+
+            return $response['usergrades'] ?? [];
+        });
+    }
+
     public function getUserLearningPlans(int $userId): array
     {
         return $this->remember("plans:{$userId}", fn () => $this->call('core_competency_list_user_plans', [

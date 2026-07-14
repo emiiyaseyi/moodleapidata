@@ -20,5 +20,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/staff/{email}/courses/{courseId}/completion', [StaffController::class, 'courseCompletion'])->whereNumber('courseId');
 
         Route::get('/courses/{courseId}', [CourseController::class, 'show'])->whereNumber('courseId');
+        Route::get('/courses/{courseId}/participants', [CourseController::class, 'participants'])->whereNumber('courseId');
+        Route::get('/courses/{courseId}/statistics', [CourseController::class, 'statistics'])->whereNumber('courseId');
+        Route::get('/courses/{courseId}/completion-report', [CourseController::class, 'completionReport'])->whereNumber('courseId');
     });
 });
